@@ -24,7 +24,7 @@ TEST(TStackTest, push_with_resize) {
     s.push(1); s.push(2); s.push(3); s.push(4);
 
     EXPECT_EQ(s.size(), 4u);
-    EXPECT_EQ(s.getCapacity(), 8u);
+    EXPECT_EQ(s.getCapacity(), 6u);
     EXPECT_EQ(s.top(), 4);
 }
 
@@ -35,7 +35,7 @@ TEST(TStackTest, push_top_with_resize) {
     s.push(s.top());
 
     EXPECT_EQ(s.size(), 2u);
-    EXPECT_EQ(s.getCapacity(), 4u);
+    EXPECT_EQ(s.getCapacity(), 2u);
     EXPECT_EQ(s.top(), 10);
     s.pop();
     EXPECT_EQ(s.top(), 10);

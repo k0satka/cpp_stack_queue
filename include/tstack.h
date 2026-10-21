@@ -44,7 +44,7 @@ public:
 	void push(const T& a) {
 		if (n >= capacity) {
 			T tmp = a;
-			resize((n + 1) * FACTOR);
+			resize(capacity == 0 ? 1 : capacity * FACTOR);
 			data[n] = tmp;
 		}
 		else data[n] = a;
