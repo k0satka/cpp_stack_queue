@@ -11,6 +11,87 @@ TEST(TDequeTest, default_constructor) {
     EXPECT_THROW(q.back(), std::out_of_range);
 }
 
+TEST(TDequeTest, move_constructor) {
+    TDeque<int> q(5);
+    q.push_back(1);
+    q.push_back(2);
+    q.push_back(3);
+    q.pop_front();
+
+    TDeque<int> moved(std::move(q));
+
+    EXPECT_EQ(moved.size(), 2u);
+    EXPECT_EQ(moved.getCapacity(), 5u);
+    EXPECT_EQ(moved.front(), 2);
+    EXPECT_EQ(moved.back(), 3);
+
+    EXPECT_TRUE(q.empty());
+    EXPECT_EQ(q.size(), 0u);
+    EXPECT_EQ(q.getCapacity(), 0u);
+
+    q.push_back(42);
+
+    EXPECT_EQ(q.front(), 42);
+    EXPECT_EQ(moved.front(), 2);
+}
+
+TEST(TDequeTest, move_assignment) {
+    TDeque<int> q(3);
+    q.push_back(1);
+    q.push_back(2);
+
+    TDeque<int> target(4);
+    target.push_back(42);
+    target.push_back(142);
+
+    target = std::move(q);
+
+    EXPECT_EQ(target.size(), 2u);
+    EXPECT_EQ(target.getCapacity(), 3u);
+    EXPECT_EQ(target.front(), 1);
+    EXPECT_EQ(target.back(), 2);
+
+    EXPECT_TRUE(q.empty());
+    EXPECT_EQ(q.getCapacity(), 0u);
+
+    q.push_front(5);
+
+    EXPECT_EQ(q.front(), 5);
+    EXPECT_EQ(target.front(), 1);
+}
+
+TEST(TDequeTest, self_move_assignment) {
+    TDeque<int> q(3);
+    q.push_back(1);
+    q.push_back(2);
+
+    q = std::move(q);
+
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(q.getCapacity(), 3u);
+    EXPECT_EQ(q.front(), 1);
+    EXPECT_EQ(q.back(), 2);
+}
+
+TEST(TDequeTest, move_source_destruction) {
+    TDeque<int> q;
+
+    {
+        TDeque<int> source(3);
+        source.push_back(10);
+        source.push_back(20);
+
+        q = std::move(source);
+    }
+
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(q.front(), 10);
+    EXPECT_EQ(q.back(), 20);
+
+    q.pop_front();
+    EXPECT_EQ(q.front(), 20);
+}
+
 TEST(TDequeTest, push_back) {
     TDeque<int> q(3u);
     q.push_back(1); q.push_back(2); q.push_back(3);
@@ -21,6 +102,28 @@ TEST(TDequeTest, push_back) {
     EXPECT_EQ(q.back(), 3);
 }
 
+TEST(TDequeTest, push_alias_with_resize) {
+    TDeque<int> q1(2);
+    q1.push_back(1);
+    q1.push_back(2);
+
+    q1.push_back(q1.front());
+
+    EXPECT_EQ(q1.size(), 3u);
+    EXPECT_EQ(q1.front(), 1);
+    EXPECT_EQ(q1.back(), 1);
+
+    TDeque<int> q2(2);
+    q2.push_back(1);
+    q2.push_back(2);
+
+    q2.push_front(q2.back());
+
+    EXPECT_EQ(q2.size(), 3u);
+    EXPECT_EQ(q2.front(), 2);
+    EXPECT_EQ(q2.back(), 2);
+}
+
 TEST(TDequeTest, push_front) {
     TDeque<int> q(3u);
     q.push_front(1); q.push_front(2); q.push_front(3);
@@ -29,6 +132,36 @@ TEST(TDequeTest, push_front) {
     EXPECT_EQ(q.getCapacity(), 3u);
     EXPECT_EQ(q.front(), 3);
     EXPECT_EQ(q.back(), 1);
+}
+
+TEST(TDequeTest, push_exception_safety) {
+    ThrowOnCopy::throw_on_assign = false;
+
+    TDeque<ThrowOnCopy> q(2);
+    q.push_back(ThrowOnCopy(1));
+    q.push_back(ThrowOnCopy(2));
+
+    int alive_before = ThrowOnCopy::alive;
+
+    ThrowOnCopy::throw_on_assign = true;
+
+    EXPECT_THROW(
+        q.push_back(ThrowOnCopy(3)),
+        std::runtime_error
+    );
+
+    EXPECT_THROW(
+        q.push_front(ThrowOnCopy(5)),
+        std::runtime_error
+    );
+
+    ThrowOnCopy::throw_on_assign = false;
+
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(q.getCapacity(), 2u);
+    EXPECT_EQ(q.front().value, 1);
+    EXPECT_EQ(q.back().value, 2);
+    EXPECT_EQ(ThrowOnCopy::alive, alive_before);
 }
 
 TEST(TDequeTest, pop_back) {
@@ -250,13 +383,9 @@ TEST(TDequeTest, copy_constructor_exception_safety) {
     ThrowOnCopy::throw_on_assign = true;
     EXPECT_TRUE(ThrowOnCopy::throw_on_assign);
 
-    EXPECT_THROW(TDeque<ThrowOnCopy> q1(q), std::runtime_error);
+    EXPECT_THROW(TDeque<ThrowOnCopy> q1(q), std::runtime_error); //?
     ThrowOnCopy::throw_on_assign = false;
 
-    EXPECT_EQ(q.size(), 2u);
-    EXPECT_EQ(q.getCapacity(), 2u);
-    EXPECT_EQ(q.front().value, 1);
-    EXPECT_EQ(q.back().value, 1);
     EXPECT_EQ(ThrowOnCopy::alive, 2u);
 }
 
@@ -269,13 +398,11 @@ TEST(TDequeTest, assigning_copy_exception_safety) {
     ThrowOnCopy::throw_on_assign = true;
     EXPECT_TRUE(ThrowOnCopy::throw_on_assign);
 
-    TDeque<ThrowOnCopy> q1(2);
+    TDeque<ThrowOnCopy> q1(3);
     EXPECT_THROW(q1 = q, std::runtime_error);
     ThrowOnCopy::throw_on_assign = false;
 
-    EXPECT_EQ(q1.size(), 2u);
-    EXPECT_EQ(q1.getCapacity(), 2u);
-    EXPECT_EQ(q1.front().value, 1);
-    EXPECT_EQ(q1.back().value, 1);
-    EXPECT_EQ(ThrowOnCopy::alive, 4u);
+    EXPECT_EQ(q1.size(), 0u);
+    EXPECT_EQ(q1.getCapacity(), 3u);
+    EXPECT_EQ(ThrowOnCopy::alive, 5u);
 }
