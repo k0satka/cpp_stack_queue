@@ -176,7 +176,7 @@ TEST(TDequeTest, empty_operations) {
     EXPECT_THROW(q.back(), std::out_of_range);
 }
 
-TEST(TDequeTest, checking_restrictions_T) {
+TEST(TDequeTest, checking_restrictions_T) { //изучаю поведение при необычных T
     //1
     struct NoDefault {
         int value;
@@ -184,7 +184,7 @@ TEST(TDequeTest, checking_restrictions_T) {
         explicit NoDefault(int v) : value(v) {}
     };
 
-    TDeque<NoDefault> q; //�����, �� q(1) ������ ���������� �� new T[]() �� ������ ������������ ����������� �� ���������
+    TDeque<NoDefault> q; //можно, но q(1) ошибка компиляции тк new T[]() не сможет использовать конструктор по умолчанию
 
     //2
     struct NonAssignable {
@@ -196,7 +196,86 @@ TEST(TDequeTest, checking_restrictions_T) {
         NonAssignable& operator=(const NonAssignable&) = delete;
     };
 
-    TDeque<NonAssignable> q1(3); //��� ����� �� NonAssignable ����� ���. �����������
+    TDeque<NonAssignable> q1(3); //тут можем тк NonAssignable имеет деф. конструктор
 
-    //q1.push_back(NonAssignable{}); //������, �� ��� �����. ������������
+    //q1.push_back(NonAssignable{}); //нельзя, тк нет копир. присваивания
+    //а если копирование есть но может выдать throw? -может быть утечка памяти см. тест copy_constructor_exception_safety
+
+    //3
+    TDeque<Tracked> q2(3);
+
+    q2.push_back(Tracked{});
+    EXPECT_EQ(q2.size(), 1u);
+    EXPECT_EQ(Tracked::alive, 3u);
+
+    q2.push_back(Tracked{});
+    EXPECT_EQ(q2.size(), 2u);
+    EXPECT_EQ(Tracked::alive, 3u);
+
+    q2.pop_front();
+    EXPECT_EQ(q2.size(), 1u);
+    EXPECT_EQ(Tracked::alive, 3u);
+
+    q2.clear();
+    EXPECT_TRUE(q2.empty());
+    EXPECT_EQ(Tracked::alive, 0u);
+}
+
+//проверяем и исправляем утечку если присваив копир в T выдаст throw
+TEST(TDequeTest, resize_exception_safety) { 
+    TDeque<ThrowOnCopy> q(2);
+    q.push_back(ThrowOnCopy(1));
+    q.push_back(ThrowOnCopy(1));
+    EXPECT_EQ(ThrowOnCopy::alive, 2u);
+
+    ThrowOnCopy::throw_on_assign = true;
+    EXPECT_TRUE(ThrowOnCopy::throw_on_assign);
+
+    EXPECT_THROW(q.push_back(ThrowOnCopy(1)), std::runtime_error); //ключевой момент
+    ThrowOnCopy::throw_on_assign = false;
+
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(q.getCapacity(), 2u);
+    EXPECT_EQ(q.front().value, 1);
+    EXPECT_EQ(q.back().value, 1);
+    EXPECT_EQ(ThrowOnCopy::alive, 2u);
+}
+
+TEST(TDequeTest, copy_constructor_exception_safety) {
+    TDeque<ThrowOnCopy> q(2);
+    q.push_back(ThrowOnCopy(1));
+    q.push_back(ThrowOnCopy(1));
+    EXPECT_EQ(ThrowOnCopy::alive, 2u);
+
+    ThrowOnCopy::throw_on_assign = true;
+    EXPECT_TRUE(ThrowOnCopy::throw_on_assign);
+
+    EXPECT_THROW(TDeque<ThrowOnCopy> q1(q), std::runtime_error);
+    ThrowOnCopy::throw_on_assign = false;
+
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(q.getCapacity(), 2u);
+    EXPECT_EQ(q.front().value, 1);
+    EXPECT_EQ(q.back().value, 1);
+    EXPECT_EQ(ThrowOnCopy::alive, 2u);
+}
+
+TEST(TDequeTest, assigning_copy_exception_safety) {
+    TDeque<ThrowOnCopy> q(2);
+    q.push_back(ThrowOnCopy(1));
+    q.push_back(ThrowOnCopy(1));
+    EXPECT_EQ(ThrowOnCopy::alive, 2u);
+
+    ThrowOnCopy::throw_on_assign = true;
+    EXPECT_TRUE(ThrowOnCopy::throw_on_assign);
+
+    TDeque<ThrowOnCopy> q1(2);
+    EXPECT_THROW(q1 = q, std::runtime_error);
+    ThrowOnCopy::throw_on_assign = false;
+
+    EXPECT_EQ(q1.size(), 2u);
+    EXPECT_EQ(q1.getCapacity(), 2u);
+    EXPECT_EQ(q1.front().value, 1);
+    EXPECT_EQ(q1.back().value, 1);
+    EXPECT_EQ(ThrowOnCopy::alive, 4u);
 }

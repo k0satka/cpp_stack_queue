@@ -13,11 +13,11 @@ private:
 
     void resize(size_t cap) {
         assert(cap >= n);
-        T* tmp = cap == 0 ? nullptr : new T[cap]();
+        std::unique_ptr<T[]> tmp(cap == 0 ? nullptr : new T[cap]()); //избавляемся для утечки памяти странных типов T
         for (size_t i = 0; i < n; i++)
             tmp[i] = data[(head + i) % capacity];
         delete[] data;
-        data = tmp;
+        data = tmp.release();
         capacity = cap;
         head = 0;
     }
@@ -25,21 +25,23 @@ private:
 public:
     TDeque() : data(nullptr), n(0), capacity(0), head(0) {}
     TDeque(size_t capacity_) : data(capacity_ == 0 ? nullptr : new T[capacity_]()), n(0), capacity(capacity_), head(0) {}
-    TDeque(const TDeque& d) : data(d.capacity != 0 ? new T[d.capacity]() : nullptr), n(d.n), capacity(d.capacity), head(0) {
+    TDeque(const TDeque& d) : data(nullptr), n(d.n), capacity(d.capacity), head(0) {
+        std::unique_ptr<T[]> tmp(d.capacity == 0 ? nullptr : new T[d.capacity]());
         for (size_t i = 0; i < n; i++)
-            data[i] = d.data[(d.head + i) % d.capacity];
+            tmp[i] = d.data[(d.head + i) % d.capacity];
+        data = tmp.release();
     }
     ~TDeque() { delete[] data; }
 
     TDeque& operator=(const TDeque& d) {
         if (this == &d) return *this;
 
-        T* tmp = d.capacity == 0 ? nullptr : new T[d.capacity]();
+        std::unique_ptr<T[]> tmp(d.capacity == 0 ? nullptr : new T[d.capacity]());
         for (size_t i = 0; i < d.n; i++)
             tmp[i] = d.data[(d.head + i) % d.capacity];
 
         delete[] data;
-        data = tmp;
+        data = tmp.release();
         n = d.n;
         capacity = d.capacity;
         head = 0;
@@ -74,15 +76,15 @@ public:
 
     void pop_back() {
         if (n == 0) return;
-        n -= 1;
         if (n * FACTOR * FACTOR <= capacity) resize(n * FACTOR); //освобождаем память при сильном уменьшении
+        n -= 1;
     }
 
     void pop_front() {
         if (n == 0) return;
+        if (n * FACTOR * FACTOR <= capacity) resize(n * FACTOR); //освобождаем память при сильном уменьшении
         head = (head + 1) == capacity ? 0 : head + 1;
         n -= 1;
-        if (n * FACTOR * FACTOR <= capacity) resize(n * FACTOR); //освобождаем память при сильном уменьшении
     }
 
     T& back() {
@@ -117,5 +119,48 @@ public:
         n = 0;
         capacity = 0;
         head = 0;
+    }
+};
+
+//для проверки_______________________________________________________
+
+struct Tracked {
+    inline static int alive = 0;
+
+    Tracked() {
+        ++alive;
+    }
+
+    Tracked(const Tracked&) {
+        ++alive;
+    }
+
+    ~Tracked() {
+        --alive;
+    }
+};
+
+struct ThrowOnCopy {
+    inline static int alive = 0;
+    inline static bool throw_on_assign = false;
+
+    int value;
+
+    ThrowOnCopy(int v = 0) : value(v) {
+        ++alive;
+    }
+
+    ThrowOnCopy(const ThrowOnCopy& other) : value(other.value) {
+        ++alive;
+    }
+
+    ~ThrowOnCopy() {
+        --alive;
+    }
+
+    ThrowOnCopy& operator=(const ThrowOnCopy& other) {
+        if (throw_on_assign) throw std::runtime_error("error");
+        value = other.value;
+        return *this;
     }
 };
