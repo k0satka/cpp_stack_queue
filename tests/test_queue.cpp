@@ -108,7 +108,7 @@ TEST(TDequeTest, push_alias_with_resize) {
 
 TEST(TDequeTest, pop_back) {
     TDeque<int> q(4);
-    for (int i = 1; i <= 4; ++i)
+    for (int i = 1; i <= 4; i++)
         q.push_back(i);
 
     q.pop_back();
@@ -125,7 +125,7 @@ TEST(TDequeTest, pop_back) {
 
 TEST(TDequeTest, pop_front) {
     TDeque<int> q(4);
-    for (int i = 1; i <= 4; ++i)
+    for (int i = 1; i <= 4; i++)
         q.push_back(i);
 
     q.pop_front();
@@ -211,7 +211,7 @@ TEST(TDequeTest, clear) {
 
 TEST(TDequeTest, circular_buffer) {
     TDeque<int> q(5);
-    for (int i = 1; i <= 4; ++i)
+    for (int i = 1; i <= 4; i++)
         q.push_back(i);
 
     q.pop_front();
@@ -224,7 +224,7 @@ TEST(TDequeTest, circular_buffer) {
     EXPECT_EQ(q.size(), 5u);
     EXPECT_EQ(q.getCapacity(), 5u);
 
-    for (int i = 3; i <= 7; ++i) {
+    for (int i = 3; i <= 7; i++) {
         ASSERT_FALSE(q.empty());
         EXPECT_EQ(q.front(), i);
         q.pop_front();
@@ -235,7 +235,7 @@ TEST(TDequeTest, circular_buffer) {
 
 TEST(TDequeTest, resize_back_wrapped) {
     TDeque<int> q(4);
-    for (int i = 1; i <= 4; ++i)
+    for (int i = 1; i <= 4; i++)
         q.push_back(i);
 
     q.pop_front();
@@ -248,7 +248,7 @@ TEST(TDequeTest, resize_back_wrapped) {
     EXPECT_EQ(q.size(), 5u);
     EXPECT_EQ(q.getCapacity(), 8u);
 
-    for (int i = 3; i <= 7; ++i) {
+    for (int i = 3; i <= 7; i++) {
         ASSERT_FALSE(q.empty());
         EXPECT_EQ(q.front(), i);
         q.pop_front();
@@ -275,7 +275,7 @@ TEST(TDequeTest, resize_front_wrapped) {
     EXPECT_EQ(q.size(), 5u);
     EXPECT_EQ(q.getCapacity(), 8u);
 
-    for (int i = 0; i <= 4; ++i) {
+    for (int i = 0; i <= 4; i++) {
         ASSERT_FALSE(q.empty());
         EXPECT_EQ(q.front(), i);
         q.pop_front();
@@ -288,7 +288,7 @@ TEST(TDequeTest, resize_front_wrapped) {
 
 TEST(TDequeTest, copy_constructor) {
     TDeque<int> q(4);
-    for (int i = 1; i <= 4; ++i)
+    for (int i = 1; i <= 4; i++)
         q.push_back(i);
 
     q.pop_front();
@@ -302,7 +302,7 @@ TEST(TDequeTest, copy_constructor) {
     EXPECT_EQ(copy.size(), 4u);
     EXPECT_EQ(copy.getCapacity(), 4u);
 
-    for (int i = 2; i <= 5; ++i) {
+    for (int i = 2; i <= 5; i++) {
         ASSERT_FALSE(copy.empty());
         EXPECT_EQ(copy.front(), i);
         copy.pop_front();
@@ -314,7 +314,7 @@ TEST(TDequeTest, copy_constructor) {
 
 TEST(TDequeTest, copy_assignment) {
     TDeque<int> q(4);
-    for (int i = 1; i <= 4; ++i)
+    for (int i = 1; i <= 4; i++)
         q.push_back(i);
 
     q.pop_front();
@@ -332,7 +332,7 @@ TEST(TDequeTest, copy_assignment) {
     EXPECT_EQ(copy.size(), 4u);
     EXPECT_EQ(copy.getCapacity(), 4u);
 
-    for (int i = 2; i <= 5; ++i) {
+    for (int i = 2; i <= 5; i++) {
         ASSERT_FALSE(copy.empty());
         EXPECT_EQ(copy.front(), i);
         copy.pop_front();
@@ -350,7 +350,7 @@ TEST(TDequeTest, self_assignment) {
     EXPECT_EQ(q.size(), 3u);
     EXPECT_EQ(q.getCapacity(), 3u);
 
-    for (int i = 1; i <= 3; ++i) {
+    for (int i = 1; i <= 3; i++) {
         ASSERT_FALSE(q.empty());
         EXPECT_EQ(q.front(), i);
         q.pop_front();
@@ -516,11 +516,9 @@ TEST(TDequeTest, over_aligned_type) {
     q.push_back(a);
     q.push_back(b);
 
-    auto front_address =
-        reinterpret_cast<std::uintptr_t>(&q.front());
+    auto front_address = reinterpret_cast<std::uintptr_t>(&q.front());
 
-    auto back_address =
-        reinterpret_cast<std::uintptr_t>(&q.back());
+    auto back_address = reinterpret_cast<std::uintptr_t>(&q.back());
 
     EXPECT_EQ(front_address % alignof(AlignedValue), 0u);
     EXPECT_EQ(back_address % alignof(AlignedValue), 0u);
@@ -662,5 +660,268 @@ TEST(TDequeTest, copy_assignment_exception_safety) {
     EXPECT_EQ(source.front().value, 1);
     EXPECT_EQ(source.back().value, 3);
 
+    EXPECT_EQ(CopyProbe::alive, alive_before);
+}
+
+//deque v2 тесты
+
+TEST(DequeBlocksTest, destroys_multiple_blocks) {
+    CopyProbe::reset();
+
+    CopyProbe value(42);
+    const int baseline = CopyProbe::alive;
+
+    {
+        Deque<CopyProbe> q;
+
+        for (int i = 0; i < 80; i++)
+            q.push_back(value);
+
+        EXPECT_EQ(CopyProbe::alive, baseline + 80);
+    }
+
+    EXPECT_EQ(CopyProbe::alive, baseline);
+}
+
+TEST(DequeBlocksTest, push_front_into_existing_block) {
+    Deque<int> q;
+
+    q.push_back(10);
+    q.push_front(20);
+    q.push_front(30);
+
+    EXPECT_EQ(q.size(), 3u);
+    EXPECT_EQ(q.front(), 30);
+    EXPECT_EQ(q.back(), 10);
+}
+
+TEST(DequeBlocksTest, push_front_across_blocks) {
+    Deque<int> q;
+
+    for (int i = 0; i < 100; i++) {
+        q.push_front(i);
+    }
+
+    EXPECT_EQ(q.size(), 100u);
+    EXPECT_EQ(q.front(), 99);
+    EXPECT_EQ(q.back(), 0);
+}
+
+TEST(DequeBlocksTest, pop_back_across_blocks) {
+    Deque<int> q;
+
+    for (int i = 0; i < 100; i++)
+        q.push_back(i);
+
+    for (int i = 99; i >= 0; i--) {
+        ASSERT_FALSE(q.empty());
+        EXPECT_EQ(q.back(), i);
+        q.pop_back();
+    }
+
+    EXPECT_TRUE(q.empty());
+    EXPECT_EQ(q.size(), 0u);
+
+    q.push_back(42);
+    EXPECT_EQ(q.front(), 42);
+    EXPECT_EQ(q.back(), 42);
+}
+
+TEST(DequeBlocksTest, pop_front_across_blocks) {
+    Deque<int> q;
+
+    for (int i = 0; i < 100; i++)
+        q.push_back(i);
+
+    for (int i = 0; i < 100; i++) {
+        ASSERT_FALSE(q.empty());
+        EXPECT_EQ(q.front(), i);
+        q.pop_front();
+    }
+
+    EXPECT_TRUE(q.empty());
+    EXPECT_EQ(q.size(), 0u);
+
+    q.push_front(42);
+    EXPECT_EQ(q.front(), 42);
+    EXPECT_EQ(q.back(), 42);
+}
+
+TEST(DequeBlocksTest, pop_mixed) {
+    Deque<int> q;
+
+    for (int i = 0; i < 100; i++)
+        q.push_front(i);
+
+    for (int i = 0; i < 40; i++)
+        q.pop_back();
+
+    for (int i = 0; i < 30; i++)
+        q.pop_front();
+
+    EXPECT_EQ(q.size(), 30u);
+    EXPECT_EQ(q.front(), 69);
+    EXPECT_EQ(q.back(), 40);
+
+    while (!q.empty())
+        q.pop_back();
+
+    q.pop_back();
+    q.pop_front();
+
+    EXPECT_TRUE(q.empty());
+}
+
+TEST(DequeBlocksTest, pop_destroys_elements) {
+    CopyProbe::reset();
+    int baseline = CopyProbe::alive;
+
+    {
+        CopyProbe value(10);
+        Deque<CopyProbe> q;
+
+        for (int i = 0; i < 100; i++)
+            q.push_back(value);
+
+        EXPECT_EQ(CopyProbe::alive, baseline + 101);
+
+        for (int i = 0; i < 50; i++)
+            q.pop_front();
+
+        EXPECT_EQ(CopyProbe::alive, baseline + 51);
+
+        for (int i = 0; i < 50; i++)
+            q.pop_back();
+
+        EXPECT_EQ(CopyProbe::alive, baseline + 1);
+    }
+
+    EXPECT_EQ(CopyProbe::alive, baseline);
+}
+
+TEST(DequeBlocksTest, clear_and_reuse) {
+    Deque<int> q;
+
+    for (int i = 0; i < 100; ++i)
+        q.push_back(i);
+
+    q.clear();
+
+    EXPECT_TRUE(q.empty());
+    EXPECT_EQ(q.size(), 0u);
+
+    q.push_front(10);
+    q.push_back(20);
+
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(q.front(), 10);
+    EXPECT_EQ(q.back(), 20);
+}
+
+TEST(DequeBlocksTest, move_constructor) {
+    Deque<int> source;
+
+    for (int i = 0; i < 100; ++i)
+        source.push_back(i);
+
+    int* old_front = &source.front();
+    int* old_back = &source.back();
+
+    Deque<int> target(std::move(source));
+
+    EXPECT_EQ(target.size(), 100u);
+    EXPECT_EQ(target.front(), 0);
+    EXPECT_EQ(target.back(), 99);
+
+    //проверяем что объекты T не перемещались
+    EXPECT_EQ(&target.front(), old_front);
+    EXPECT_EQ(&target.back(), old_back);
+
+    EXPECT_TRUE(source.empty());
+    EXPECT_EQ(source.size(), 0u);
+
+    //можно ли исходный контейнер использовать повторно
+    source.push_back(42);
+    EXPECT_EQ(source.front(), 42);
+}
+
+TEST(DequeBlocksTest, move_assignment) {
+    Deque<int> source;
+    for (int i = 0; i < 100; ++i)
+        source.push_back(i);
+
+    int* old_front = &source.front();
+
+    Deque<int> target;
+    target.push_back(999);
+    target.push_back(888);
+
+    target = std::move(source);
+
+    EXPECT_EQ(target.size(), 100u);
+    EXPECT_EQ(target.front(), 0);
+    EXPECT_EQ(target.back(), 99);
+    EXPECT_EQ(&target.front(), old_front);
+
+    EXPECT_TRUE(source.empty());
+
+    source.push_back(42);
+    EXPECT_EQ(source.front(), 42);
+
+    target = std::move(target);
+    EXPECT_EQ(target.size(), 100u);
+    EXPECT_EQ(target.front(), 0);
+    EXPECT_EQ(target.back(), 99);
+}
+
+TEST(DequeBlocksTest, copy_constructor_multiple_blocks) {
+    Deque<int> source;
+
+    for (int i = 0; i < 100; i++)
+        source.push_back(i);
+
+    for (int i = 0; i < 17; i++)
+        source.pop_front();
+
+    Deque<int> copy(source);
+
+    EXPECT_EQ(copy.size(), 83u);
+    EXPECT_EQ(copy.front(), 17);
+    EXPECT_EQ(copy.back(), 99);
+
+    source.front() = 1000;
+    source.back() = 2000;
+
+    EXPECT_EQ(copy.front(), 17);
+    EXPECT_EQ(copy.back(), 99);
+
+    for (int i = 17; i < 100; i++) {
+        ASSERT_FALSE(copy.empty());
+        EXPECT_EQ(copy.front(), i);
+        copy.pop_front();
+    }
+
+    EXPECT_TRUE(copy.empty());
+}
+
+TEST(DequeBlocksTest, copy_constructor_exception_safety) {
+    CopyProbe::reset();
+
+    CopyProbe value(42);
+    Deque<CopyProbe> source;
+
+    for (int i = 0; i < 80; ++i)
+        source.push_back(value);
+
+    const int alive_before = CopyProbe::alive;
+
+    CopyProbe::copies = 0;
+    CopyProbe::fail_at = 35;
+
+    EXPECT_THROW({ Deque<CopyProbe> copy(source); }, std::runtime_error);
+
+    CopyProbe::reset();
+
+    EXPECT_EQ(source.size(), 80u);
     EXPECT_EQ(CopyProbe::alive, alive_before);
 }

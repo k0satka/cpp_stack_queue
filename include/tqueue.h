@@ -277,4 +277,233 @@ private:
 
 public:
     Deque() : first(nullptr), last(nullptr), first_elem(0), last_elem(0), n(0) {}
+    Deque(const Deque& d) : first(nullptr), last(nullptr), first_elem(0), last_elem(0), n(0) {
+        Block* currentBlock = d.first;
+        size_t currentElem = d.first_elem;
+        try {
+            while (currentBlock != d.last) {
+                while (currentElem < BLOCK_SIZE) {
+                    push_back(currentBlock->data[currentElem]);
+                    currentElem += 1;
+                }
+                currentElem = 0;
+                currentBlock = currentBlock->next;
+            }
+            while (currentElem < d.last_elem) {
+                push_back(currentBlock->data[currentElem]);
+                currentElem += 1;
+            }
+        }
+        catch (...) {
+            clear();
+            throw;
+        }
+    }
+    Deque(Deque&& d) noexcept : first(d.first), last(d.last), first_elem(d.first_elem), last_elem(d.last_elem), n(d.n) {
+        d.first = nullptr;
+        d.last = nullptr;
+        d.first_elem = 0;
+        d.last_elem = 0;
+        d.n = 0;
+    }
+    ~Deque() { clear(); }
+
+    Deque& operator=(const Deque& d) {
+        if (this == &d) return *this;
+
+        Deque<T> tmp(d);
+        *this = std::move(tmp);
+
+        return *this;
+    }
+
+    Deque& operator=(Deque&& d) noexcept {
+        if (this == &d) return *this;
+
+        clear();
+
+        first = d.first;
+        last = d.last;
+        first_elem = d.first_elem;
+        last_elem = d.last_elem;
+        n = d.n;
+
+        d.first = nullptr;
+        d.last = nullptr;
+        d.first_elem = 0;
+        d.last_elem = 0;
+        d.n = 0;
+
+        return *this;
+    }
+
+    void push_back(const T& a) {
+        if (last == nullptr) {
+            Block* newBlock = new Block;
+
+            size_t pos = BLOCK_SIZE / 2; //начинаем с середины чтобы при push_front сразу не создавать новый блок
+            try {
+                ::new (static_cast<void*>(newBlock->data + pos)) T(a);
+            }
+            catch (...) {
+                delete newBlock;
+                throw;
+            }
+            
+            last = newBlock;
+            first = newBlock;
+            first_elem = pos;
+            last_elem = pos + 1;
+            n = 1;
+        }
+        else if (last_elem == BLOCK_SIZE) {
+            Block* newBlock = new Block;
+
+            try {
+                ::new (static_cast<void*>(newBlock->data)) T(a);
+            }
+            catch (...) {
+                delete newBlock;
+                throw;
+            }
+            newBlock->prev = last;
+            last->next = newBlock;
+
+            last = newBlock;
+            last_elem = 1;
+            n += 1;
+        }
+        else {
+            ::new (static_cast<void*>(last->data + last_elem)) T(a);
+
+            last_elem += 1;
+            n += 1;
+        }
+    }
+
+    void push_front(const T& a) {
+        if (first == nullptr) {
+            Block* newBlock = new Block;
+
+            size_t pos = BLOCK_SIZE / 2;
+            try {
+                ::new (static_cast<void*>(newBlock->data + pos)) T(a);
+            }
+            catch (...) {
+                delete newBlock;
+                throw;
+            }
+
+            last = newBlock;
+            first = newBlock;
+            first_elem = pos;
+            last_elem = pos + 1;
+            n = 1;
+        }
+        else if (first_elem == 0) {
+            Block* newBlock = new Block;
+
+            try {
+                ::new (static_cast<void*>(newBlock->data + BLOCK_SIZE - 1)) T(a);
+            }
+            catch (...) {
+                delete newBlock;
+                throw;
+            }
+            newBlock->next = first;
+            first->prev = newBlock;
+
+            first = newBlock;
+            first_elem = BLOCK_SIZE - 1;
+            n += 1;
+        }
+        else {
+            ::new (static_cast<void*>(first->data + first_elem - 1)) T(a);
+
+            first_elem -= 1;
+            n += 1;
+        }
+    }
+
+    void pop_back() {
+        if (n == 0) return;
+
+        if (n == 1) {
+            last->data[last_elem - 1].~T();
+            delete last;
+            first = nullptr;
+            last = nullptr;
+            first_elem = 0;
+            last_elem = 0;
+            n = 0;
+            return;
+        }
+
+        last->data[last_elem - 1].~T();
+        last_elem -= 1;
+        n -= 1;
+
+        if (last_elem == 0) {
+            Block* newLast = last->prev;
+            delete last;
+            last = newLast;
+            last->next = nullptr;
+            last_elem = BLOCK_SIZE;
+        }
+    }
+
+    void pop_front() {
+        if (n == 0) return;
+
+        if (n == 1) {
+            first->data[first_elem].~T();
+            delete first;
+            first = nullptr;
+            last = nullptr;
+            first_elem = 0;
+            last_elem = 0;
+            n = 0;
+            return;
+        }
+
+        first->data[first_elem].~T();
+        first_elem += 1;
+        n -= 1;
+
+        if (first_elem == BLOCK_SIZE) {
+            Block* newFirst = first->next;
+            delete first;
+            first = newFirst;
+            first->prev = nullptr;
+            first_elem = 0;
+        }
+    }
+
+    T& back() {
+        if (n == 0) throw std::out_of_range("n = 0");
+        return last->data[last_elem - 1];
+    }
+
+    const T& back() const {
+        if (n == 0) throw std::out_of_range("n = 0");
+        return last->data[last_elem - 1];
+    }
+
+    T& front() {
+        if (n == 0) throw std::out_of_range("n = 0");
+        return first->data[first_elem];
+    }
+
+    const T& front() const {
+        if (n == 0) throw std::out_of_range("n = 0");
+        return first->data[first_elem];
+    }
+
+    bool empty() const { return n == 0; }
+
+    size_t size() const { return n; }
+
+    void clear() {
+        while (!empty()) pop_back();
+    }
 };
