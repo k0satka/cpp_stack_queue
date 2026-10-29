@@ -1,5 +1,6 @@
 #pragma once
 #include <stdexcept>
+#include <utility>
 
 //TDeque на кольцевом буффере:
 
@@ -337,19 +338,20 @@ public:
         return *this;
     }
 
-    void push_back(const T& a) {
+    template<typename... Args>
+    T& emplace_back(Args&&... args) {
         if (last == nullptr) {
             Block* newBlock = new Block;
 
             size_t pos = BLOCK_SIZE / 2; //начинаем с середины чтобы при push_front сразу не создавать новый блок
             try {
-                ::new (static_cast<void*>(newBlock->data + pos)) T(a);
+                ::new (static_cast<void*>(newBlock->data + pos)) T(std::forward<Args>(args)...);
             }
             catch (...) {
                 delete newBlock;
                 throw;
             }
-            
+
             last = newBlock;
             first = newBlock;
             first_elem = pos;
@@ -360,7 +362,7 @@ public:
             Block* newBlock = new Block;
 
             try {
-                ::new (static_cast<void*>(newBlock->data)) T(a);
+                ::new (static_cast<void*>(newBlock->data)) T(std::forward<Args>(args)...);
             }
             catch (...) {
                 delete newBlock;
@@ -374,20 +376,23 @@ public:
             n += 1;
         }
         else {
-            ::new (static_cast<void*>(last->data + last_elem)) T(a);
+            ::new (static_cast<void*>(last->data + last_elem)) T(std::forward<Args>(args)...);
 
             last_elem += 1;
             n += 1;
         }
+
+        return last->data[last_elem - 1];
     }
 
-    void push_front(const T& a) {
+    template<typename... Args>
+    T& emplace_front(Args&&... args) {
         if (first == nullptr) {
             Block* newBlock = new Block;
 
             size_t pos = BLOCK_SIZE / 2;
             try {
-                ::new (static_cast<void*>(newBlock->data + pos)) T(a);
+                ::new (static_cast<void*>(newBlock->data + pos)) T(std::forward<Args>(args)...);
             }
             catch (...) {
                 delete newBlock;
@@ -404,7 +409,7 @@ public:
             Block* newBlock = new Block;
 
             try {
-                ::new (static_cast<void*>(newBlock->data + BLOCK_SIZE - 1)) T(a);
+                ::new (static_cast<void*>(newBlock->data + BLOCK_SIZE - 1)) T(std::forward<Args>(args)...);
             }
             catch (...) {
                 delete newBlock;
@@ -418,11 +423,29 @@ public:
             n += 1;
         }
         else {
-            ::new (static_cast<void*>(first->data + first_elem - 1)) T(a);
+            ::new (static_cast<void*>(first->data + first_elem - 1)) T(std::forward<Args>(args)...);
 
             first_elem -= 1;
             n += 1;
         }
+
+        return first->data[first_elem];
+    }
+
+    void push_back(const T& a) {
+        emplace_back(a);
+    }
+
+    void push_back(T&& a) {
+        emplace_back(std::move(a));
+    }
+
+    void push_front(const T& a) {
+        emplace_front(a);
+    }
+
+    void push_front(T&& a) {
+        emplace_front(std::move(a));
     }
 
     void pop_back() {

@@ -38,6 +38,38 @@ struct alignas(64) AlignedValue {
     explicit AlignedValue(int v) : value(v) {}
 };
 
+struct Immovable {
+    int value;
+
+    explicit Immovable(int v) : value(v) {}
+
+    Immovable(const Immovable&) = delete;
+    Immovable(Immovable&&) = delete;
+
+    Immovable& operator=(const Immovable&) = delete;
+    Immovable& operator=(Immovable&&) = delete;
+};
+
+struct ThrowOnConstruct {
+    inline static int alive = 0;
+
+    int value;
+
+    explicit ThrowOnConstruct(int v) : value(v) {
+        if (v == -1)
+            throw std::runtime_error("construction failed");
+
+        ++alive;
+    }
+
+    ThrowOnConstruct(const ThrowOnConstruct&) = delete;
+    ThrowOnConstruct(ThrowOnConstruct&&) = delete;
+
+    ~ThrowOnConstruct() {
+        --alive;
+    }
+};
+
 //базовые проверки
 
 TEST(TDequeTest, default_constructor) {
@@ -924,4 +956,90 @@ TEST(DequeBlocksTest, copy_constructor_exception_safety) {
 
     EXPECT_EQ(source.size(), 80u);
     EXPECT_EQ(CopyProbe::alive, alive_before);
+}
+
+TEST(DequeBlocksTest, emplace_back_immovable) {
+    Deque<Immovable> q;
+
+    Immovable& first = q.emplace_back(10);
+    Immovable* first_address = &first;
+
+    for (int i = 1; i <= 100; i++)
+        q.emplace_back(i);
+
+    EXPECT_EQ(q.size(), 101u);
+    EXPECT_EQ(q.front().value, 10);
+    EXPECT_EQ(q.back().value, 100);
+
+    EXPECT_EQ(&q.front(), first_address);
+    EXPECT_EQ(first.value, 10);
+
+    q.pop_front();
+
+    EXPECT_EQ(q.front().value, 1);
+    EXPECT_EQ(q.size(), 100u);
+}
+
+TEST(DequeBlocksTest, emplace_both_ends_immovable) {
+    Deque<Immovable> q;
+
+    Immovable& middle = q.emplace_back(100);
+    Immovable* address = &middle;
+
+    for (int i = 1; i <= 100; i++) {
+        q.emplace_front(-i);
+        q.emplace_back(i);
+    }
+
+    EXPECT_EQ(q.size(), 201u);
+    EXPECT_EQ(q.front().value, -100);
+    EXPECT_EQ(q.back().value, 100);
+
+    EXPECT_EQ(&middle, address);
+    EXPECT_EQ(middle.value, 100);
+}
+
+TEST(DequeBlocksTest, push_move_only) {
+    Deque<std::unique_ptr<int>> q;
+
+    q.push_back(std::make_unique<int>(10));
+    q.push_front(std::make_unique<int>(20));
+
+    EXPECT_EQ(q.size(), 2u);
+    EXPECT_EQ(*q.front(), 20);
+    EXPECT_EQ(*q.back(), 10);
+
+    auto ptr = std::make_unique<int>(30);
+
+    q.push_back(std::move(ptr));
+
+    EXPECT_EQ(ptr, nullptr);
+    EXPECT_EQ(*q.back(), 30);
+}
+
+TEST(DequeBlocksTest, emplace_exception_safety) {
+    const int baseline = ThrowOnConstruct::alive;
+
+    {
+        Deque<ThrowOnConstruct> q;
+
+        for (int i = 0; i < 100; i++) {
+            q.emplace_back(i);
+            q.emplace_front(i + 100);
+        }
+
+        auto* front_address = &q.front();
+        auto* back_address = &q.back();
+
+        EXPECT_THROW(q.emplace_back(-1), std::runtime_error);
+        EXPECT_THROW(q.emplace_front(-1), std::runtime_error);
+
+        EXPECT_EQ(q.size(), 200u);
+        EXPECT_EQ(ThrowOnConstruct::alive, baseline + 200);
+
+        EXPECT_EQ(&q.front(), front_address);
+        EXPECT_EQ(&q.back(), back_address);
+    }
+
+    EXPECT_EQ(ThrowOnConstruct::alive, baseline);
 }
