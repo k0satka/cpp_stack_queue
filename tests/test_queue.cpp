@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "tqueue.h"
 
-//вспомогательные типы
+//РІСЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ С‚РёРїС‹
 struct QueueImmovable {
     inline static int alive = 0;
     int value;
@@ -45,7 +45,7 @@ struct QueueCopyProbe {
     }
 };
 
-//базовые операции
+//Р±Р°Р·РѕРІС‹Рµ РѕРїРµСЂР°С†РёРё
 
 TEST(TQueueTest, default_constructor) {
     TQueue<int> q;
@@ -127,13 +127,13 @@ TEST(TQueueTest, push_own_front) {
 
     q.push("qwerty");
 
-    const std::string* original_address = &q.front();
+    const std::string* p = &q.front();
 
     for (int i = 0; i < 100; i++)
         q.push(q.front());
 
     EXPECT_EQ(q.size(), 101u);
-    EXPECT_EQ(&q.front(), original_address);
+    EXPECT_EQ(&q.front(), p);
 
     while (!q.empty()) {
         EXPECT_EQ(q.front(), "qwerty");
@@ -141,58 +141,58 @@ TEST(TQueueTest, push_own_front) {
     }
 }
 
-//rule файв
+//rule С„Р°Р№РІ
 
 TEST(TQueueTest, copy_constructor) {
-    TQueue<int> source;
+    TQueue<int> q;
 
     for (int i = 0; i < 100; i++)
-        source.push(i);
+        q.push(i);
 
     for (int i = 0; i < 17; i++)
-        source.pop();
+        q.pop();
 
-    TQueue<int> copy(source);
+    TQueue<int> q2(q);
 
-    EXPECT_EQ(copy.size(), 83u);
-    EXPECT_EQ(copy.front(), 17);
-    EXPECT_EQ(copy.back(), 99);
+    EXPECT_EQ(q2.size(), 83u);
+    EXPECT_EQ(q2.front(), 17);
+    EXPECT_EQ(q2.back(), 99);
 
-    source.front() = 1000;
-    source.back() = 2000;
+    q.front() = 1000;
+    q.back() = 2000;
 
-    EXPECT_EQ(copy.front(), 17);
-    EXPECT_EQ(copy.back(), 99);
+    EXPECT_EQ(q2.front(), 17);
+    EXPECT_EQ(q2.back(), 99);
 
     for (int i = 17; i < 100; i++) {
-        ASSERT_FALSE(copy.empty());
-        EXPECT_EQ(copy.front(), i);
-        copy.pop();
+        ASSERT_FALSE(q2.empty());
+        EXPECT_EQ(q2.front(), i);
+        q2.pop();
     }
 
-    EXPECT_TRUE(copy.empty());
+    EXPECT_TRUE(q2.empty());
 }
 
 TEST(TQueueTest, copy_assignment) {
-    TQueue<int> source;
+    TQueue<int> q;
 
     for (int i = 0; i < 100; i++)
-        source.push(i);
+        q.push(i);
 
-    TQueue<int> target;
-    target.push(999);
-    target.push(888);
+    TQueue<int> q2;
+    q2.push(999);
+    q2.push(888);
 
-    target = source;
+    q2 = q;
 
-    EXPECT_EQ(target.size(), 100u);
-    EXPECT_EQ(target.front(), 0);
-    EXPECT_EQ(target.back(), 99);
+    EXPECT_EQ(q2.size(), 100u);
+    EXPECT_EQ(q2.front(), 0);
+    EXPECT_EQ(q2.back(), 99);
 
-    source.front() = 500;
+    q.front() = 500;
 
-    EXPECT_EQ(target.front(), 0);
-    EXPECT_EQ(source.front(), 500);
+    EXPECT_EQ(q2.front(), 0);
+    EXPECT_EQ(q.front(), 500);
 }
 
 TEST(TQueueTest, self_copy_assignment) {
@@ -209,52 +209,52 @@ TEST(TQueueTest, self_copy_assignment) {
 }
 
 TEST(TQueueTest, move_constructor) {
-    TQueue<int> source;
+    TQueue<int> q;
 
     for (int i = 0; i < 100; i++)
-        source.push(i);
+        q.push(i);
 
-    int* first_address = &source.front();
-    int* last_address = &source.back();
+    int* p1 = &q.front();
+    int* p2 = &q.back();
 
-    TQueue<int> moved(std::move(source));
+    TQueue<int> q2(std::move(q));
 
-    EXPECT_EQ(moved.size(), 100u);
-    EXPECT_EQ(moved.front(), 0);
-    EXPECT_EQ(moved.back(), 99);
+    EXPECT_EQ(q2.size(), 100u);
+    EXPECT_EQ(q2.front(), 0);
+    EXPECT_EQ(q2.back(), 99);
 
-    EXPECT_EQ(&moved.front(), first_address);
-    EXPECT_EQ(&moved.back(), last_address);
+    EXPECT_EQ(&q2.front(), p1);
+    EXPECT_EQ(&q2.back(), p2);
 
-    EXPECT_TRUE(source.empty());
+    EXPECT_TRUE(q.empty());
 
-    source.push(42);
-    EXPECT_EQ(source.front(), 42);
+    q.push(42);
+    EXPECT_EQ(q.front(), 42);
 }
 
 TEST(TQueueTest, move_assignment) {
-    TQueue<int> source;
+    TQueue<int> q;
 
     for (int i = 0; i < 100; i++)
-        source.push(i);
+        q.push(i);
 
-    int* original_address = &source.front();
+    int* p = &q.front();
 
-    TQueue<int> target;
-    target.push(999);
-    target.push(888);
+    TQueue<int> q2;
+    q2.push(999);
+    q2.push(888);
 
-    target = std::move(source);
+    q2 = std::move(q);
 
-    EXPECT_EQ(target.size(), 100u);
-    EXPECT_EQ(target.front(), 0);
-    EXPECT_EQ(target.back(), 99);
-    EXPECT_EQ(&target.front(), original_address);
+    EXPECT_EQ(q2.size(), 100u);
+    EXPECT_EQ(q2.front(), 0);
+    EXPECT_EQ(q2.back(), 99);
+    EXPECT_EQ(&q2.front(), p);
 
-    EXPECT_TRUE(source.empty());
+    EXPECT_TRUE(q.empty());
 
-    source.push(42);
-    EXPECT_EQ(source.front(), 42);
+    q.push(42);
+    EXPECT_EQ(q.front(), 42);
 }
 
 TEST(TQueueTest, self_move_assignment) {
@@ -270,7 +270,7 @@ TEST(TQueueTest, self_move_assignment) {
     EXPECT_EQ(q.back(), 20);
 }
 
-//странные типы
+//СЃС‚СЂР°РЅРЅС‹Рµ С‚РёРїС‹
 
 TEST(TQueueTest, push_move_only) {
     TQueue<std::unique_ptr<int>> q;
@@ -296,13 +296,13 @@ TEST(TQueueTest, push_move_only) {
 }
 
 TEST(TQueueTest, emplace_immovable) {
-    const int baseline = QueueImmovable::alive;
+    const int n = QueueImmovable::alive;
 
     {
         TQueue<QueueImmovable> q;
 
-        QueueImmovable& first = q.emplace(10);
-        QueueImmovable* address = &first;
+        QueueImmovable& x = q.emplace(10);
+        QueueImmovable* p = &x;
 
         for (int i = 1; i <= 100; i++)
             q.emplace(i);
@@ -311,22 +311,22 @@ TEST(TQueueTest, emplace_immovable) {
         EXPECT_EQ(q.front().value, 10);
         EXPECT_EQ(q.back().value, 100);
 
-        EXPECT_EQ(&q.front(), address);
-        EXPECT_EQ(QueueImmovable::alive, baseline + 101);
+        EXPECT_EQ(&q.front(), p);
+        EXPECT_EQ(QueueImmovable::alive, n + 101);
 
         q.pop();
 
         EXPECT_EQ(q.front().value, 1);
-        EXPECT_EQ(QueueImmovable::alive, baseline + 100);
+        EXPECT_EQ(QueueImmovable::alive, n + 100);
     }
 
-    EXPECT_EQ(QueueImmovable::alive, baseline);
+    EXPECT_EQ(QueueImmovable::alive, n);
 }
 
-//исключения
+//РёСЃРєР»СЋС‡РµРЅРёСЏ
 
 TEST(TQueueTest, emplace_exception_safety) {
-    const int baseline = QueueImmovable::alive;
+    const int n = QueueImmovable::alive;
 
     {
         TQueue<QueueImmovable> q;
@@ -334,106 +334,106 @@ TEST(TQueueTest, emplace_exception_safety) {
         for (int i = 0; i < 100; i++)
             q.emplace(i);
 
-        auto* first_address = &q.front();
-        auto* last_address = &q.back();
+        auto* p1 = &q.front();
+        auto* p2 = &q.back();
 
         EXPECT_THROW(q.emplace(-1), std::runtime_error);
 
         EXPECT_EQ(q.size(), 100u);
         EXPECT_EQ(q.front().value, 0);
         EXPECT_EQ(q.back().value, 99);
-        EXPECT_EQ(&q.front(), first_address);
-        EXPECT_EQ(&q.back(), last_address);
-        EXPECT_EQ(QueueImmovable::alive, baseline + 100);
+        EXPECT_EQ(&q.front(), p1);
+        EXPECT_EQ(&q.back(), p2);
+        EXPECT_EQ(QueueImmovable::alive, n + 100);
     }
 
-    EXPECT_EQ(QueueImmovable::alive, baseline);
+    EXPECT_EQ(QueueImmovable::alive, n);
 }
 
 TEST(TQueueTest, push_exception_safety) {
     QueueCopyProbe::reset();
 
-    QueueCopyProbe value(42);
+    QueueCopyProbe x(42);
     TQueue<QueueCopyProbe> q;
 
     for (int i = 0; i < 80; i++)
-        q.push(value);
+        q.push(x);
 
-    const int alive_before = QueueCopyProbe::alive;
+    const int n = QueueCopyProbe::alive;
 
     QueueCopyProbe::copies = 0;
     QueueCopyProbe::fail_at = 1;
 
-    EXPECT_THROW(q.push(value), std::runtime_error);
+    EXPECT_THROW(q.push(x), std::runtime_error);
 
     QueueCopyProbe::reset();
 
     EXPECT_EQ(q.size(), 80u);
     EXPECT_EQ(q.front().value, 42);
     EXPECT_EQ(q.back().value, 42);
-    EXPECT_EQ(QueueCopyProbe::alive, alive_before);
+    EXPECT_EQ(QueueCopyProbe::alive, n);
 }
 
 TEST(TQueueTest, copy_constructor_exception_safety) {
     QueueCopyProbe::reset();
 
-    const int baseline = QueueCopyProbe::alive;
+    const int n = QueueCopyProbe::alive;
 
     {
-        QueueCopyProbe value(42);
-        TQueue<QueueCopyProbe> source;
+        QueueCopyProbe x(42);
+        TQueue<QueueCopyProbe> q;
 
         for (int i = 0; i < 80; i++)
-            source.push(value);
+            q.push(x);
 
-        const int alive_before = QueueCopyProbe::alive;
+        const int n2 = QueueCopyProbe::alive;
 
         QueueCopyProbe::copies = 0;
         QueueCopyProbe::fail_at = 35;
 
         EXPECT_THROW(
-            { TQueue<QueueCopyProbe> copy(source); },
+            { TQueue<QueueCopyProbe> q2(q); },
             std::runtime_error
         );
 
         QueueCopyProbe::reset();
 
-        EXPECT_EQ(source.size(), 80u);
-        EXPECT_EQ(source.front().value, 42);
-        EXPECT_EQ(QueueCopyProbe::alive, alive_before);
+        EXPECT_EQ(q.size(), 80u);
+        EXPECT_EQ(q.front().value, 42);
+        EXPECT_EQ(QueueCopyProbe::alive, n2);
     }
 
-    EXPECT_EQ(QueueCopyProbe::alive, baseline);
+    EXPECT_EQ(QueueCopyProbe::alive, n);
 }
 
 TEST(TQueueTest, copy_assignment_exception_safety) {
     QueueCopyProbe::reset();
 
-    QueueCopyProbe value(42);
-    QueueCopyProbe old_value(99);
+    QueueCopyProbe x(42);
+    QueueCopyProbe y(99);
 
-    TQueue<QueueCopyProbe> source;
+    TQueue<QueueCopyProbe> q;
     for (int i = 0; i < 80; i++)
-        source.push(value);
+        q.push(x);
 
-    TQueue<QueueCopyProbe> target;
-    target.push(old_value);
+    TQueue<QueueCopyProbe> q2;
+    q2.push(y);
 
-    const int alive_before = QueueCopyProbe::alive;
+    const int n = QueueCopyProbe::alive;
 
     QueueCopyProbe::copies = 0;
     QueueCopyProbe::fail_at = 35;
 
-    EXPECT_THROW(target = source, std::runtime_error);
+    EXPECT_THROW(q2 = q, std::runtime_error);
 
     QueueCopyProbe::reset();
 
-    EXPECT_EQ(target.size(), 1u);
-    EXPECT_EQ(target.front().value, 99);
-    EXPECT_EQ(target.back().value, 99);
+    EXPECT_EQ(q2.size(), 1u);
+    EXPECT_EQ(q2.front().value, 99);
+    EXPECT_EQ(q2.back().value, 99);
 
-    EXPECT_EQ(source.size(), 80u);
-    EXPECT_EQ(source.front().value, 42);
+    EXPECT_EQ(q.size(), 80u);
+    EXPECT_EQ(q.front().value, 42);
 
-    EXPECT_EQ(QueueCopyProbe::alive, alive_before);
+    EXPECT_EQ(QueueCopyProbe::alive, n);
 }
