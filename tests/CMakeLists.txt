@@ -12,6 +12,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(stack_queue_tests
     test_stack.cpp
     test_queue.cpp
+    test_deque.cpp
 )
 
 target_link_libraries(stack_queue_tests PRIVATE
